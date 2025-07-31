@@ -118,18 +118,13 @@ from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB, TRCK, TPOS, TDRC
 from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, TransferSpeedColumn
 
-# --- FIX: Create a Typer app with rich help text ---
+# --- FIX: Create a minimalist Typer app for a simple help screen ---
 app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
-    rich_markup_mode="markdown",
-    help="""
-🎵 **spdl-cli**: یک ابزار قدرتمند برای دانلود آهنگ‌های اسپاتیفای.
-
-این برنامه با دریافت لینک آهنگ، آن را در یوتیوب پیدا کرده و با بهترین کیفیت صوتی به همراه تمام متادیتا (کاور، نام و...) ذخیره می‌کند.
-"""
+    help="ابزار دانلود آهنگ از اسپاتیفای."
 )
-console = Console()
+console = Console() # We still use rich for printing colors and progress bars
 CLIENT_ID = 'YOUR_CLIENT_ID'
 CLIENT_SECRET = 'YOUR_CLIENT_SECRET'
 DOWNLOAD_DIR = 'Spotify Downloads'
@@ -166,18 +161,11 @@ def download_track(track_object):
             console.print(f"✅ [bold green]Success![/] '{track_name}' is ready.")
         except Exception as e: console.print(f"❌ [bold red]Error processing '{track_name}':[/] {e}")
 
-@app.command(name="get", help="[bold]دانلود یک آهنگ[/bold] با استفاده از لینک اسپاتیفای آن.")
+@app.command(name="get")
 def get_track(
-    track_url: str = typer.Argument(
-        ...,
-        help="لینک کامل آهنگ مورد نظر در اسپاتیفای.",
-        metavar="SPOTIFY_URL",
-        rich_help_panel="آرگومان‌ها و گزینه‌ها"
-    )
+    track_url: str = typer.Argument(..., help="لینک کامل آهنگ از اسپاتیفای.", metavar="URL")
 ):
-    """
-    یک آهنگ را بر اساس لینک اسپاتیفای آن دریافت و دانلود می‌کند.
-    """
+    """دانلود یک آهنگ با استفاده از لینک اسپاتیفای آن."""
     global sp
     if sp is None: console.print("❌ [bold red]Error:[/] Spotify client is not initialized."); raise typer.Exit(code=1)
     if "spotify.com/track" not in track_url: console.print("❌ [bold red]Invalid Input:[/] Please provide a valid Spotify track URL."); raise typer.Exit(code=1)
@@ -193,9 +181,7 @@ def get_track(
 
 @app.callback()
 def main_callback():
-    """
-    ابزار دانلود از اسپاتیفای spdl
-    """
+    """spdl: ابزار دانلود آهنگ از اسپاتیفای از طریق یوتیوب."""
     # This function runs before any command and initializes the app
     global sp
     try:
@@ -226,12 +212,14 @@ main() {
     echo_green "====================================="
     echo_green "   spdl - Universal Setup Script   "
     echo_green "====================================="
+    
     detect_os
     install_system_deps
     prompt_keys
     setup_project
     create_spdl_script
     finalize_setup
+
     echo_green "\n🎉 Installation Complete! 🎉"
     echo_yellow "You can now run the downloader from anywhere in your terminal."
     echo "Example usage:"
