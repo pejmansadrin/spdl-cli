@@ -118,11 +118,16 @@ from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB, TRCK, TPOS, TDRC
 from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, TransferSpeedColumn
 
-# --- FIX: Create a Typer app with no_args_is_help=True ---
+# --- FIX: Create a Typer app with rich help text ---
 app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
-    help="A simple CLI tool to download Spotify tracks from YouTube."
+    rich_markup_mode="markdown",
+    help="""
+🎵 **spdl-cli**: یک ابزار قدرتمند برای دانلود آهنگ‌های اسپاتیفای.
+
+این برنامه با دریافت لینک آهنگ، آن را در یوتیوب پیدا کرده و با بهترین کیفیت صوتی به همراه تمام متادیتا (کاور، نام و...) ذخیره می‌کند.
+"""
 )
 console = Console()
 CLIENT_ID = 'YOUR_CLIENT_ID'
@@ -161,16 +166,21 @@ def download_track(track_object):
             console.print(f"✅ [bold green]Success![/] '{track_name}' is ready.")
         except Exception as e: console.print(f"❌ [bold red]Error processing '{track_name}':[/] {e}")
 
-@app.command(name="get")
+@app.command(name="get", help="[bold]دانلود یک آهنگ[/bold] با استفاده از لینک اسپاتیفای آن.")
 def get_track(
-    track_url: str = typer.Argument(..., help="The full URL of the Spotify track to download.")
+    track_url: str = typer.Argument(
+        ...,
+        help="لینک کامل آهنگ مورد نظر در اسپاتیفای.",
+        metavar="SPOTIFY_URL",
+        rich_help_panel="آرگومان‌ها و گزینه‌ها"
+    )
 ):
-    """Downloads a single track from Spotify."""
+    """
+    یک آهنگ را بر اساس لینک اسپاتیفای آن دریافت و دانلود می‌کند.
+    """
     global sp
-    if sp is None:
-        console.print("❌ [bold red]Error:[/] Spotify client is not initialized."); raise typer.Exit(code=1)
-    if "spotify.com/track" not in track_url:
-        console.print("❌ [bold red]Invalid Input:[/] Please provide a valid Spotify track URL."); raise typer.Exit(code=1)
+    if sp is None: console.print("❌ [bold red]Error:[/] Spotify client is not initialized."); raise typer.Exit(code=1)
+    if "spotify.com/track" not in track_url: console.print("❌ [bold red]Invalid Input:[/] Please provide a valid Spotify track URL."); raise typer.Exit(code=1)
     try:
         track_data = sp.track(track_url)
         if track_data:
@@ -178,14 +188,15 @@ def get_track(
             console.print("\n✨ [bold]All tasks complete![/]")
         else:
             console.print("❌ [bold red]Could not retrieve track data. Please check the URL.[/]")
-    except SpotifyException:
-        console.print(f"❌ [bold red]Spotify API Error:[/] Could not get track info."); raise typer.Exit(code=1)
-    except Exception as e:
-        console.print(f"❌ [bold red]An unexpected error occurred:[/] {e}"); raise typer.Exit(code=1)
+    except SpotifyException: console.print(f"❌ [bold red]Spotify API Error:[/] Could not get track info."); raise typer.Exit(code=1)
+    except Exception as e: console.print(f"❌ [bold red]An unexpected error occurred:[/] {e}"); raise typer.Exit(code=1)
 
 @app.callback()
 def main_callback():
-    """Initializes the application before running a command."""
+    """
+    ابزار دانلود از اسپاتیفای spdl
+    """
+    # This function runs before any command and initializes the app
     global sp
     try:
         if not os.path.exists(DOWNLOAD_DIR): os.makedirs(DOWNLOAD_DIR)
@@ -215,14 +226,12 @@ main() {
     echo_green "====================================="
     echo_green "   spdl - Universal Setup Script   "
     echo_green "====================================="
-    
     detect_os
     install_system_deps
     prompt_keys
     setup_project
     create_spdl_script
     finalize_setup
-
     echo_green "\n🎉 Installation Complete! 🎉"
     echo_yellow "You can now run the downloader from anywhere in your terminal."
     echo "Example usage:"
