@@ -57,7 +57,7 @@ install_system_deps() {
     fi
     case $OS in
         "macos")
-            if ! command -v brew &> /dev/null; then echo_red "Homebrew not found."; exit 1; fi
+            if ! command -v brew &> /dev/null; then echo_red "Homebrew not found. Please install it first from https://brew.sh"; exit 1; fi
             echo "Using Homebrew..."; brew install python ffmpeg
             ;;
         "fedora"|"rhel"|"centos")
@@ -124,7 +124,6 @@ CLIENT_SECRET = 'YOUR_CLIENT_SECRET'
 DOWNLOAD_DIR = 'Spotify Downloads'
 
 def download_track(track_object):
-    # This function is unchanged
     all_artists = ', '.join(artist['name'] for artist in track_object['artists'])
     track_name = track_object['name']
     console.print(f"🎵 Attempting to download: [bold cyan]{track_name}[/] by [bold cyan]{all_artists}[/]")
@@ -188,7 +187,11 @@ def main():
         console.print(f"❌ [bold red]An unexpected error occurred:[/] {e}"); sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        console.print("\n\n🔴 [bold]Operation cancelled by user.[/]")
+        sys.exit(130)
 EOF
     sed -i "s|YOUR_CLIENT_ID|$spotify_client_id|" spdl.py
     sed -i "s|YOUR_CLIENT_SECRET|$spotify_client_secret|" spdl.py
@@ -217,7 +220,6 @@ main() {
     echo_green "\n🎉 Installation Complete! 🎉"
     echo_yellow "You can now run the downloader from anywhere in your terminal."
     echo "Example usage:"
-    # --- FIX: Removed quotes from the example usage ---
     echo_yellow "spdl https://open.spotify.com/track/your-track-id"
     echo -e "Your downloaded files will be in: ${YELLOW}$INSTALL_DIR/Spotify Downloads${NC}"
 }
