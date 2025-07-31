@@ -94,7 +94,6 @@ setup_project() {
     echo "Project directory: $(pwd)"
     echo "Creating Python virtual environment..."; python3 -m venv "$VENV_DIR"
     echo "Creating requirements.txt..."
-    # FIX: Typer is no longer needed
     cat << EOF > requirements.txt
 spotipy
 yt-dlp
@@ -160,7 +159,6 @@ def print_help_and_exit():
     sys.exit(0)
 
 def main():
-    # --- FIX: Manual argument parsing for full control ---
     if len(sys.argv) != 2 or sys.argv[1] in ("--help", "-h"):
         print_help_and_exit()
 
@@ -219,7 +217,8 @@ main() {
     echo_green "\n🎉 Installation Complete! 🎉"
     echo_yellow "You can now run the downloader from anywhere in your terminal."
     echo "Example usage:"
-    echo_yellow "spdl \"https://open.spotify.com/track/your-track-id\""
+    # --- FIX: Removed quotes from the example usage ---
+    echo_yellow "spdl https://open.spotify.com/track/your-track-id"
     echo -e "Your downloaded files will be in: ${YELLOW}$INSTALL_DIR/Spotify Downloads${NC}"
 }
 
