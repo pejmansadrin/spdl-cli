@@ -18,95 +18,62 @@ echo_green() { echo -e "${GREEN}$1${NC}"; }
 echo_yellow() { echo -e "${YELLOW}$1${NC}"; }
 echo_red() { echo -e "${RED}$1${NC}"; }
 
-# --- NEW: Function to read a secret with masking ---
 read_masked() {
     local prompt="$1"
     local secret_var_name="$2"
     local secret=""
     local char
-
     echo -n "$prompt"
-
-    # Ensure the terminal is in a state to read single characters
     stty -echo
     while IFS= read -r -n1 char; do
-        # Check for Enter key (empty char)
-        if [[ -z "$char" ]]; then
-            break
-        fi
-        # Check for Backspace/Delete key
+        if [[ -z "$char" ]]; then break; fi
         if [[ "$char" == $'\x7f' ]]; then
-            # If the secret is not empty, remove the last character
             if [ -n "$secret" ]; then
-                secret="${secret%?}"
-                # Move cursor back, print space, move cursor back again
-                echo -ne "\b \b"
+                secret="${secret%?}"; echo -ne "\b \b";
             fi
         else
-            # Append character to the secret and print an asterisk
-            secret+="$char"
-            echo -n "*"
+            secret+="$char"; echo -n "*";
         fi
     done
     stty echo
-    # Assign the final secret to the variable name passed as an argument using eval
     eval "$secret_var_name=\"$secret\""
-    echo # Print a newline to move to the next line
+    echo
 }
-
 
 # --- Smart Installer Functions ---
 
 detect_os() {
     echo "--> Detecting Operating System..."
-    if [[ "$(uname)" == "Darwin" ]]; then
-        OS="macos"
-    elif [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$ID
-    else
-        OS="unknown"
-    fi
+    if [[ "$(uname)" == "Darwin" ]]; then OS="macos";
+    elif [ -f /etc/os-release ]; then . /etc/os-release; OS=$ID;
+    else OS="unknown"; fi
     echo "OS detected: $OS"
 }
 
 install_system_deps() {
     echo_green "\n---> Step 1: Installing System Dependencies..."
     if ! sudo -v &> /dev/null; then
-        echo_red "Error: sudo privileges are required for system-wide installations."
-        exit 1
+        echo_red "Error: sudo privileges are required."; exit 1;
     fi
-
     case $OS in
         "macos")
-            if ! command -v brew &> /dev/null; then
-                echo_red "Homebrew not found. Please install it first from https://brew.sh"
-                exit 1
-            fi
-            echo "Using Homebrew to install packages..."
-            brew install python ffmpeg
+            if ! command -v brew &> /dev/null; then echo_red "Homebrew not found."; exit 1; fi
+            echo "Using Homebrew..."; brew install python ffmpeg
             ;;
         "fedora"|"rhel"|"centos")
-            echo "Using DNF for Fedora-based distro..."
-            echo "Enabling RPM Fusion repositories for ffmpeg..."
-            sudo dnf install -y \
-              https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
-              https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+            echo "Using DNF...";
+            sudo dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
             sudo dnf install -y python3 python3-pip ffmpeg
             ;;
         "ubuntu"|"debian")
-            echo "Using APT for Debian-based distro..."
-            sudo apt-get update
-            sudo apt-get install -y python3 python3-pip ffmpeg
+            echo "Using APT..."; sudo apt-get update; sudo apt-get install -y python3 python3-pip ffmpeg
             ;;
         "cachyos"|"arch")
-            echo "Using Pacman for Arch-based distro..."
-            sudo pacman -Syu --noconfirm --needed python python-pip ffmpeg
+            echo "Using Pacman..."; sudo pacman -Syu --noconfirm --needed python python-pip ffmpeg
             ;;
         *)
-            echo_red "Unsupported Operating System: $OS. Cannot install dependencies automatically."
-            echo_yellow "Please manually install: python3, pip, and ffmpeg."
-            read -p "Press [Enter] to try to continue anyway, or Ctrl+C to exit."
+            echo_red "Unsupported OS: $OS."; echo_yellow "Please manually install: python3, pip, and ffmpeg."
+            read -p "Press [Enter] to continue, or Ctrl+C to exit."
             ;;
     esac
     echo_green "System dependencies are ready."
@@ -115,23 +82,17 @@ install_system_deps() {
 prompt_keys() {
     echo_yellow "\nPlease enter your Spotify API credentials."
     read -p "Enter your Spotify CLIENT_ID: " spotify_client_id </dev/tty
-    
-    # --- FIX: Use the new masked read function ---
     read_masked "Enter your Spotify CLIENT_SECRET: " spotify_client_secret
-    
     if [[ -z "$spotify_client_id" || -z "$spotify_client_secret" ]]; then
-        echo_red "Error: Both CLIENT_ID and CLIENT_SECRET must be provided. Aborting."
-        exit 1
+        echo_red "Error: Both keys must be provided."; exit 1;
     fi
 }
 
 setup_project() {
     echo_green "\n---> Step 2: Setting up project directory and Python environment..."
-    mkdir -p "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
+    mkdir -p "$INSTALL_DIR"; cd "$INSTALL_DIR"
     echo "Project directory: $(pwd)"
-    echo "Creating Python virtual environment..."
-    python3 -m venv "$VENV_DIR"
+    echo "Creating Python virtual environment..."; python3 -m venv "$VENV_DIR"
     echo "Creating requirements.txt..."
     cat << EOF > requirements.txt
 spotipy
@@ -141,8 +102,7 @@ requests
 rich
 typer
 EOF
-    echo "Installing Python packages..."
-    "$VENV_DIR/bin/pip" install -r requirements.txt
+    echo "Installing Python packages..."; "$VENV_DIR/bin/pip" install -r requirements.txt
     echo_green "Python environment is ready."
 }
 
@@ -150,7 +110,6 @@ create_spdl_script() {
     echo_green "\n---> Step 3: Creating the main spdl.py script..."
     cat << EOF > spdl.py
 #!${INSTALL_DIR}/${VENV_DIR}/bin/python3
-# (The Python code is exactly the same as the last version)
 import os, sys, spotipy, yt_dlp, requests, typer
 from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.exceptions import SpotifyException
@@ -158,19 +117,28 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB, TRCK, TPOS, TDRC
 from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, TransferSpeedColumn
+
+# --- FIX: Create a Typer app with no_args_is_help=True ---
+app = typer.Typer(
+    no_args_is_help=True,
+    add_completion=False,
+    help="A simple CLI tool to download Spotify tracks from YouTube."
+)
 console = Console()
 CLIENT_ID = 'YOUR_CLIENT_ID'
 CLIENT_SECRET = 'YOUR_CLIENT_SECRET'
 DOWNLOAD_DIR = 'Spotify Downloads'
+sp = None # Global spotify client
+
 def download_track(track_object):
+    # This function is unchanged
     all_artists = ', '.join(artist['name'] for artist in track_object['artists'])
     track_name = track_object['name']
     console.print(f"🎵 Attempting to download: [bold cyan]{track_name}[/] by [bold cyan]{all_artists}[/]")
     safe_filename = "".join(c for c in f"{all_artists} - {track_name}" if c.isalnum() or c in (' ', '.', '_')).rstrip()
     final_mp3_path = os.path.join(DOWNLOAD_DIR, f"{safe_filename}.mp3")
     if os.path.exists(final_mp3_path):
-        console.print(f"🟡 [yellow]'{track_name}' already exists. Skipping...[/]")
-        return
+        console.print(f"🟡 [yellow]'{track_name}' already exists. Skipping...[/]"); return
     search_query = f"{all_artists} - {track_name} audio"
     with Progress(TextColumn("[bold blue]{task.fields[filename]}", justify="right"), BarColumn(bar_width=None),"[progress.percentage]{task.percentage:>3.1f}%", "•", TransferSpeedColumn(), "•", TimeRemainingColumn(),console=console) as progress:
         download_task = progress.add_task("download", filename=f"{safe_filename}.mp3", total=None)
@@ -192,13 +160,15 @@ def download_track(track_object):
             audio.save(v2_version=3)
             console.print(f"✅ [bold green]Success![/] '{track_name}' is ready.")
         except Exception as e: console.print(f"❌ [bold red]Error processing '{track_name}':[/] {e}")
-def main(track_url: str = typer.Argument(..., help="The full URL of the Spotify track to download.")):
-    try:
-        if not os.path.exists(DOWNLOAD_DIR): os.makedirs(DOWNLOAD_DIR)
-        auth_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
-        sp = spotipy.Spotify(auth_manager=auth_manager)
-    except Exception as e:
-        console.print(f"❌ [bold red]Initialization Failed:[/] {e}"); raise typer.Exit(code=1)
+
+@app.command(name="get")
+def get_track(
+    track_url: str = typer.Argument(..., help="The full URL of the Spotify track to download.")
+):
+    """Downloads a single track from Spotify."""
+    global sp
+    if sp is None:
+        console.print("❌ [bold red]Error:[/] Spotify client is not initialized."); raise typer.Exit(code=1)
     if "spotify.com/track" not in track_url:
         console.print("❌ [bold red]Invalid Input:[/] Please provide a valid Spotify track URL."); raise typer.Exit(code=1)
     try:
@@ -212,8 +182,20 @@ def main(track_url: str = typer.Argument(..., help="The full URL of the Spotify 
         console.print(f"❌ [bold red]Spotify API Error:[/] Could not get track info."); raise typer.Exit(code=1)
     except Exception as e:
         console.print(f"❌ [bold red]An unexpected error occurred:[/] {e}"); raise typer.Exit(code=1)
+
+@app.callback()
+def main_callback():
+    """Initializes the application before running a command."""
+    global sp
+    try:
+        if not os.path.exists(DOWNLOAD_DIR): os.makedirs(DOWNLOAD_DIR)
+        auth_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
+        sp = spotipy.Spotify(auth_manager=auth_manager)
+    except Exception as e:
+        console.print(f"❌ [bold red]Initialization Failed:[/] {e}"); raise typer.Exit(code=1)
+
 if __name__ == "__main__":
-    typer.run(main)
+    app()
 EOF
     sed -i "s|YOUR_CLIENT_ID|$spotify_client_id|" spdl.py
     sed -i "s|YOUR_CLIENT_SECRET|$spotify_client_secret|" spdl.py
@@ -244,7 +226,7 @@ main() {
     echo_green "\n🎉 Installation Complete! 🎉"
     echo_yellow "You can now run the downloader from anywhere in your terminal."
     echo "Example usage:"
-    echo_yellow "spdl \"https://open.spotify.com/track/your-track-id\""
+    echo_yellow "spdl get \"https://open.spotify.com/track/your-track-id\""
     echo -e "Your downloaded files will be in: ${YELLOW}$INSTALL_DIR/Spotify Downloads${NC}"
 }
 
