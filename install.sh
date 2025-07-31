@@ -25,7 +25,6 @@ detect_os() {
     if [[ "$(uname)" == "Darwin" ]]; then
         OS="macos"
     elif [ -f /etc/os-release ]; then
-        # Load the os-release file to get the ID
         . /etc/os-release
         OS=$ID
     else
@@ -65,7 +64,6 @@ install_system_deps() {
             ;;
         "cachyos"|"arch")
             echo "Using Pacman for Arch-based distro..."
-            # --needed flag prevents reinstalling packages that are already up-to-date.
             sudo pacman -Syu --noconfirm --needed python python-pip ffmpeg
             ;;
         *)
@@ -77,11 +75,11 @@ install_system_deps() {
     echo_green "System dependencies are ready."
 }
 
-# (The rest of the functions are OS-agnostic and remain the same)
 prompt_keys() {
     echo_yellow "\nPlease enter your Spotify API credentials."
-    read -p "Enter your Spotify CLIENT_ID: " spotify_client_id
-    read -sp "Enter your Spotify CLIENT_SECRET: " spotify_client_secret
+    # --- FIX: Read directly from the terminal device to prevent issues ---
+    read -p "Enter your Spotify CLIENT_ID: " spotify_client_id </dev/tty
+    read -sp "Enter your Spotify CLIENT_SECRET: " spotify_client_secret </dev/tty
     echo
     if [[ -z "$spotify_client_id" || -z "$spotify_client_secret" ]]; then
         echo_red "Error: Both CLIENT_ID and CLIENT_SECRET must be provided. Aborting."
