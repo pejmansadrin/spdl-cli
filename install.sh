@@ -94,13 +94,13 @@ setup_project() {
     echo "Project directory: $(pwd)"
     echo "Creating Python virtual environment..."; python3 -m venv "$VENV_DIR"
     echo "Creating requirements.txt..."
+    # FIX: Typer is no longer needed
     cat << EOF > requirements.txt
 spotipy
 yt-dlp
 mutagen
 requests
 rich
-typer
 EOF
     echo "Installing Python packages..."; "$VENV_DIR/bin/pip" install -r requirements.txt
     echo_green "Python environment is ready."
@@ -110,7 +110,7 @@ create_spdl_script() {
     echo_green "\n---> Step 3: Creating the main spdl.py script..."
     cat << EOF > spdl.py
 #!${INSTALL_DIR}/${VENV_DIR}/bin/python3
-import os, sys, spotipy, yt_dlp, requests, typer
+import os, sys, spotipy, yt_dlp, requests
 from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.exceptions import SpotifyException
 from mutagen.mp3 import MP3
@@ -118,17 +118,11 @@ from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB, TRCK, TPOS, TDRC
 from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, TransferSpeedColumn
 
-# --- FIX: Create a minimalist Typer app for a simple help screen ---
-app = typer.Typer(
-    no_args_is_help=True,
-    add_completion=False,
-    help="ابزار دانلود آهنگ از اسپاتیفای."
-)
-console = Console() # We still use rich for printing colors and progress bars
+# --- Configuration ---
+console = Console()
 CLIENT_ID = 'YOUR_CLIENT_ID'
 CLIENT_SECRET = 'YOUR_CLIENT_SECRET'
 DOWNLOAD_DIR = 'Spotify Downloads'
-sp = None # Global spotify client
 
 def download_track(track_object):
     # This function is unchanged
@@ -161,14 +155,28 @@ def download_track(track_object):
             console.print(f"✅ [bold green]Success![/] '{track_name}' is ready.")
         except Exception as e: console.print(f"❌ [bold red]Error processing '{track_name}':[/] {e}")
 
-@app.command(name="get")
-def get_track(
-    track_url: str = typer.Argument(..., help="لینک کامل آهنگ از اسپاتیفای.", metavar="URL")
-):
-    """دانلود یک آهنگ با استفاده از لینک اسپاتیفای آن."""
-    global sp
-    if sp is None: console.print("❌ [bold red]Error:[/] Spotify client is not initialized."); raise typer.Exit(code=1)
-    if "spotify.com/track" not in track_url: console.print("❌ [bold red]Invalid Input:[/] Please provide a valid Spotify track URL."); raise typer.Exit(code=1)
+def print_help_and_exit():
+    print("Usage: spdl [URL]")
+    sys.exit(0)
+
+def main():
+    # --- FIX: Manual argument parsing for full control ---
+    if len(sys.argv) != 2 or sys.argv[1] in ("--help", "-h"):
+        print_help_and_exit()
+
+    track_url = sys.argv[1]
+
+    # Initialization
+    try:
+        if not os.path.exists(DOWNLOAD_DIR): os.makedirs(DOWNLOAD_DIR)
+        auth_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
+        sp = spotipy.Spotify(auth_manager=auth_manager)
+    except Exception as e:
+        console.print(f"❌ [bold red]Initialization Failed:[/] {e}"); sys.exit(1)
+
+    # Validation and Execution
+    if "spotify.com/track" not in track_url:
+        console.print("❌ [bold red]Invalid Input:[/] Please provide a valid Spotify track URL."); sys.exit(1)
     try:
         track_data = sp.track(track_url)
         if track_data:
@@ -176,23 +184,13 @@ def get_track(
             console.print("\n✨ [bold]All tasks complete![/]")
         else:
             console.print("❌ [bold red]Could not retrieve track data. Please check the URL.[/]")
-    except SpotifyException: console.print(f"❌ [bold red]Spotify API Error:[/] Could not get track info."); raise typer.Exit(code=1)
-    except Exception as e: console.print(f"❌ [bold red]An unexpected error occurred:[/] {e}"); raise typer.Exit(code=1)
-
-@app.callback()
-def main_callback():
-    """spdl: ابزار دانلود آهنگ از اسپاتیفای از طریق یوتیوب."""
-    # This function runs before any command and initializes the app
-    global sp
-    try:
-        if not os.path.exists(DOWNLOAD_DIR): os.makedirs(DOWNLOAD_DIR)
-        auth_manager = SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
-        sp = spotipy.Spotify(auth_manager=auth_manager)
+    except SpotifyException:
+        console.print(f"❌ [bold red]Spotify API Error:[/] Could not get track info."); sys.exit(1)
     except Exception as e:
-        console.print(f"❌ [bold red]Initialization Failed:[/] {e}"); raise typer.Exit(code=1)
+        console.print(f"❌ [bold red]An unexpected error occurred:[/] {e}"); sys.exit(1)
 
 if __name__ == "__main__":
-    app()
+    main()
 EOF
     sed -i "s|YOUR_CLIENT_ID|$spotify_client_id|" spdl.py
     sed -i "s|YOUR_CLIENT_SECRET|$spotify_client_secret|" spdl.py
@@ -212,18 +210,16 @@ main() {
     echo_green "====================================="
     echo_green "   spdl - Universal Setup Script   "
     echo_green "====================================="
-    
     detect_os
     install_system_deps
     prompt_keys
     setup_project
     create_spdl_script
     finalize_setup
-
     echo_green "\n🎉 Installation Complete! 🎉"
     echo_yellow "You can now run the downloader from anywhere in your terminal."
     echo "Example usage:"
-    echo_yellow "spdl get \"https://open.spotify.com/track/your-track-id\""
+    echo_yellow "spdl \"https://open.spotify.com/track/your-track-id\""
     echo -e "Your downloaded files will be in: ${YELLOW}$INSTALL_DIR/Spotify Downloads${NC}"
 }
 
