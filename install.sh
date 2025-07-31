@@ -18,6 +18,43 @@ echo_green() { echo -e "${GREEN}$1${NC}"; }
 echo_yellow() { echo -e "${YELLOW}$1${NC}"; }
 echo_red() { echo -e "${RED}$1${NC}"; }
 
+# --- NEW: Function to read a secret with masking ---
+read_masked() {
+    local prompt="$1"
+    local secret_var_name="$2"
+    local secret=""
+    local char
+
+    echo -n "$prompt"
+
+    # Ensure the terminal is in a state to read single characters
+    stty -echo
+    while IFS= read -r -n1 char; do
+        # Check for Enter key (empty char)
+        if [[ -z "$char" ]]; then
+            break
+        fi
+        # Check for Backspace/Delete key
+        if [[ "$char" == $'\x7f' ]]; then
+            # If the secret is not empty, remove the last character
+            if [ -n "$secret" ]; then
+                secret="${secret%?}"
+                # Move cursor back, print space, move cursor back again
+                echo -ne "\b \b"
+            fi
+        else
+            # Append character to the secret and print an asterisk
+            secret+="$char"
+            echo -n "*"
+        fi
+    done
+    stty echo
+    # Assign the final secret to the variable name passed as an argument using eval
+    eval "$secret_var_name=\"$secret\""
+    echo # Print a newline to move to the next line
+}
+
+
 # --- Smart Installer Functions ---
 
 detect_os() {
@@ -78,8 +115,10 @@ install_system_deps() {
 prompt_keys() {
     echo_yellow "\nPlease enter your Spotify API credentials."
     read -p "Enter your Spotify CLIENT_ID: " spotify_client_id </dev/tty
-    read -sp "Enter your Spotify CLIENT_SECRET: " spotify_client_secret </dev/tty
-    echo
+    
+    # --- FIX: Use the new masked read function ---
+    read_masked "Enter your Spotify CLIENT_SECRET: " spotify_client_secret
+    
     if [[ -z "$spotify_client_id" || -z "$spotify_client_secret" ]]; then
         echo_red "Error: Both CLIENT_ID and CLIENT_SECRET must be provided. Aborting."
         exit 1
@@ -206,7 +245,6 @@ main() {
     echo_yellow "You can now run the downloader from anywhere in your terminal."
     echo "Example usage:"
     echo_yellow "spdl \"https://open.spotify.com/track/your-track-id\""
-    # --- FIX: Added the -e flag to correctly interpret color codes ---
     echo -e "Your downloaded files will be in: ${YELLOW}$INSTALL_DIR/Spotify Downloads${NC}"
 }
 
