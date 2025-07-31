@@ -77,7 +77,6 @@ install_system_deps() {
 
 prompt_keys() {
     echo_yellow "\nPlease enter your Spotify API credentials."
-    # --- FIX: Read directly from the terminal device to prevent issues ---
     read -p "Enter your Spotify CLIENT_ID: " spotify_client_id </dev/tty
     read -sp "Enter your Spotify CLIENT_SECRET: " spotify_client_secret </dev/tty
     echo
@@ -207,7 +206,8 @@ main() {
     echo_yellow "You can now run the downloader from anywhere in your terminal."
     echo "Example usage:"
     echo_yellow "spdl \"https://open.spotify.com/track/your-track-id\""
-    echo "Your downloaded files will be in: ${YELLOW}$INSTALL_DIR/Spotify Downloads${NC}"
+    # --- FIX: Added the -e flag to correctly interpret color codes ---
+    echo -e "Your downloaded files will be in: ${YELLOW}$INSTALL_DIR/Spotify Downloads${NC}"
 }
 
 main "$@"
