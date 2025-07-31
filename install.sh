@@ -7,7 +7,7 @@ set -e
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m'
+NC='\033[0m' # No Color
 
 # --- Project Configuration ---
 INSTALL_DIR="$HOME/spdl-cli"
@@ -25,6 +25,7 @@ detect_os() {
     if [[ "$(uname)" == "Darwin" ]]; then
         OS="macos"
     elif [ -f /etc/os-release ]; then
+        # Load the os-release file to get the ID
         . /etc/os-release
         OS=$ID
     else
@@ -47,7 +48,7 @@ install_system_deps() {
                 exit 1
             fi
             echo "Using Homebrew to install packages..."
-            brew install python3 ffmpeg
+            brew install python ffmpeg
             ;;
         "fedora"|"rhel"|"centos")
             echo "Using DNF for Fedora-based distro..."
@@ -61,6 +62,11 @@ install_system_deps() {
             echo "Using APT for Debian-based distro..."
             sudo apt-get update
             sudo apt-get install -y python3 python3-pip ffmpeg
+            ;;
+        "cachyos"|"arch")
+            echo "Using Pacman for Arch-based distro..."
+            # --needed flag prevents reinstalling packages that are already up-to-date.
+            sudo pacman -Syu --noconfirm --needed python python-pip ffmpeg
             ;;
         *)
             echo_red "Unsupported Operating System: $OS. Cannot install dependencies automatically."
@@ -193,8 +199,8 @@ main() {
     echo_green "====================================="
     
     detect_os
-    prompt_keys
     install_system_deps
+    prompt_keys
     setup_project
     create_spdl_script
     finalize_setup
